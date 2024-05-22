@@ -26,7 +26,8 @@ def generate_launch_description():
         executable='scanmatcher_node',
         parameters=[main_param_dir],
         remappings=[('/input_cloud','/velodyne_points')],
-        output='screen'
+        output='screen',
+        prefix=['terminator -x gdb -ex run --args']  # MATTEO FOR DEBUG
         )
 
     tf = launch_ros.actions.Node(

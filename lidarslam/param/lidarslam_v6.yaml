@@ -9,16 +9,16 @@ scan_matcher:
   ros__parameters:
     global_frame_id: "map"
     robot_frame_id: "base_link"
-    registration_method: "GICP"  # Normal Distributions Transform (NDT). Or GICP.
-    ndt_resolution: 0.8  # Size of a voxel for NDT. 0.7 works, 0.4 does not. 0.8 works better on the beginning, worse on the end.
+    registration_method: "NDT"  # Normal Distributions Transform (NDT).
+    ndt_resolution: 1.0  # Size of a voxel for NDT  
     ndt_num_threads: 0  # As many as you can.
-    gicp_corr_dist_threshold: 0.1  # Original for outdoors: 5.0. Does this affect NDT?
-    trans_for_mapupdate: 0.2  # Original for outdoors 1.5. 0.7, 0.8 I think the map is updated only if we move by this much.
-    vg_size_for_input: 0.08  # Original for outdoors 0.5. Voxel dimension for input PCD.
-    vg_size_for_map: 0.04   # Original for outdoors 0.1. Voxel dimension for map.
-    use_min_max_filter: true  # I think this enables the filter that rejects points too close or too far from the lidar.
-    scan_min_range: 0.2
-    scan_max_range: 50.0
+    gicp_corr_dist_threshold: 0.1  # Does this affect NDT?
+    trans_for_mapupdate: 0.8  # I think the map is updated only if we move by this much.
+    vg_size_for_input: 0.03  # Voxel dimension for input PCD.
+    vg_size_for_map: 0.03   # Voxel dimension for map.
+    use_min_max_filter: true  # ???
+    scan_min_range: 0.3
+    scan_max_range: 15.0
     scan_period: 0.2  # Useful in case one uses IMU?
     map_publish_period: 1.0 
     num_targeted_cloud: 250  # This is very high respect to the default (20), it should be heavier, but more accurate.
@@ -30,8 +30,8 @@ scan_matcher:
     initial_pose_qy: 0.0
     initial_pose_qz: 0.0
     initial_pose_qw: 1.0
-    use_imu: false   # What does this do? The function called is adjustDistortion(), taken from a paper.
-    use_odom: true  # We use this one.
+    use_imu: false
+    use_odom: false
     debug_flag: true
 
 # BACK END.

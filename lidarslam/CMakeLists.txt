@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 project(lidarslam)
+add_compile_options(-g)  # MATTEO FOR DEBUG.
 
 # Default to C99
 if(NOT CMAKE_C_STANDARD)

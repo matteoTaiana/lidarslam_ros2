@@ -72,6 +72,8 @@ extern "C" {
 
 #include <pcl_conversions/pcl_conversions.h>
 
+#include <nlohmann/json.hpp>
+
 namespace graphslam
 {
   class ScanMatcherComponent: public rclcpp::Node
@@ -81,6 +83,10 @@ public:
     explicit ScanMatcherComponent(const rclcpp::NodeOptions & options);
 
 private:
+    nlohmann::json json_object_;
+    int n_received_pcds_;
+    int n_processed_pcds_;
+
     rclcpp::Clock clock_;
     tf2_ros::Buffer tfbuffer_;
     tf2_ros::TransformListener listener_;

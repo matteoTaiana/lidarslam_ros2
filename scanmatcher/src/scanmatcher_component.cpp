@@ -1,5 +1,9 @@
 #include "scanmatcher/scanmatcher_component.h"
 #include <chrono>
+#include <nlohmann/json.hpp>
+#include <fstream>
+#include <iostream>
+#include <cstdio>
 
 using namespace std::chrono_literals;
 
@@ -105,7 +109,7 @@ ScanMatcherComponent::ScanMatcherComponent(const rclcpp::NodeOptions & options)
     pclomp::NormalDistributionsTransform<pcl::PointXYZI, pcl::PointXYZI>::Ptr
       ndt(new pclomp::NormalDistributionsTransform<pcl::PointXYZI, pcl::PointXYZI>());
     ndt->setResolution(ndt_resolution);
-    ndt->setTransformationEpsilon(0.01);
+    ndt->setTransformationEpsilon(0.001);  // MATTEO: Alignment terminates when difference between two consecutive steps drops below this value. Default: 0.01. [meters for translation, radians for rotation.]
     // ndt_omp
     ndt->setNeighborhoodSearchMethod(pclomp::DIRECT7);
     if (ndt_num_threads > 0) {ndt->setNumThreads(ndt_num_threads);}
@@ -117,6 +121,7 @@ ScanMatcherComponent::ScanMatcherComponent(const rclcpp::NodeOptions & options)
       gicp(new pclomp::GeneralizedIterativeClosestPoint<pcl::PointXYZI, pcl::PointXYZI>());
     gicp->setMaxCorrespondenceDistance(gicp_corr_dist_threshold);
     gicp->setTransformationEpsilon(1e-8);
+    gicp->setMaximumIterations(100);
     registration_ = gicp;
   } else {
     RCLCPP_ERROR(get_logger(), "invalid registration method");
@@ -151,6 +156,8 @@ ScanMatcherComponent::ScanMatcherComponent(const rclcpp::NodeOptions & options)
     path_.poses.push_back(*msg);
   }
 
+  n_received_pcds_ = 0;
+  n_processed_pcds_ = 0;
   RCLCPP_INFO(get_logger(), "initialization end");
 }
 
@@ -179,9 +186,17 @@ void ScanMatcherComponent::initializePubSub()
   auto cloud_callback =
     [this](const typename sensor_msgs::msg::PointCloud2::SharedPtr msg) -> void
     {
+      n_received_pcds_++;
+      // std::cout << "#########################################################" << std::endl;
+      std::cout << "N rec. PCDs = " << n_received_pcds_ << std::endl;
+      // std::cout << "#########################################################" << std::endl;
+
       if (!initial_pose_received_)
       {
         RCLCPP_WARN(get_logger(), "initial_pose is not received");
+        std::cout << "#########################################################" << std::endl;
+        std::cout << "initial_pose is not received" << std::endl;
+        std::cout << "#########################################################" << std::endl;
         return;
       }
 
@@ -195,6 +210,9 @@ void ScanMatcherComponent::initializePubSub()
         tf2::doTransform(*msg, transformed_msg, transform); // TODO:slow now(https://github.com/ros/geometry2/pull/432)
       } catch (tf2::TransformException & e) {
         RCLCPP_ERROR(this->get_logger(), "%s", e.what());
+        std::cout << "#########################################################" << std::endl;
+        std::cout << "EXCEPTION! " << e.what() << std::endl;
+        std::cout << "#########################################################" << std::endl;
         return;
       }
 
@@ -224,7 +242,9 @@ void ScanMatcherComponent::initializePubSub()
         last_map_time_ = clock_.now();
       }
 
-      if (initial_cloud_received_) {receiveCloud(tmp_ptr, msg->header.stamp);}
+      n_processed_pcds_++;
+      std::cout << "N proc. PCDs = " << n_processed_pcds_ << std::endl;
+      if (initial_cloud_received_) {receiveCloud(tmp_ptr, msg->header.stamp);}  // THIS GUY IS NOT CALLED ALL THE TIME.
 
     };
 
@@ -242,9 +262,12 @@ void ScanMatcherComponent::initializePubSub()
     create_subscription<sensor_msgs::msg::Imu>(
     "imu", rclcpp::SensorDataQoS(), imu_callback);
 
+  // input_cloud_sub_ =
+  //   create_subscription<sensor_msgs::msg::PointCloud2>(
+  //   "input_cloud", rclcpp::SensorDataQoS(), cloud_callback);  // Was this why we were losing some packages?
   input_cloud_sub_ =
     create_subscription<sensor_msgs::msg::PointCloud2>(
-    "input_cloud", rclcpp::SensorDataQoS(), cloud_callback);
+    "input_cloud", 20, cloud_callback);
 
   // pub
   pose_pub_ = create_publisher<geometry_msgs::msg::PoseStamped>(
@@ -323,6 +346,7 @@ void ScanMatcherComponent::receiveCloud(
 
   pcl::PointCloud<pcl::PointXYZI>::Ptr filtered_cloud_ptr(new pcl::PointCloud<pcl::PointXYZI>());
   pcl::VoxelGrid<pcl::PointXYZI> voxel_grid;
+  // std::cout << "MATTEO: vg_size_for_input_ = " << vg_size_for_input_ << std::endl;
   voxel_grid.setLeafSize(vg_size_for_input_, vg_size_for_input_, vg_size_for_input_);
   voxel_grid.setInputCloud(cloud_ptr);
   voxel_grid.filter(*filtered_cloud_ptr);
@@ -334,17 +358,19 @@ void ScanMatcherComponent::receiveCloud(
     geometry_msgs::msg::TransformStamped odom_trans;
     try {
       odom_trans = tfbuffer_.lookupTransform(
-        odom_frame_id_, robot_frame_id_, tf2_ros::fromMsg(
-          stamp));
+        odom_frame_id_, robot_frame_id_, tf2_ros::fromMsg(stamp));  // MATTEO: I think we are looking for the closest odometry message to the time at which we received the PCD.
+        std::cout << "MATTEO: odometry received" << std::endl;
     } catch (tf2::TransformException & e) {
       RCLCPP_ERROR(this->get_logger(), "%s", e.what());
     }
     Eigen::Affine3d odom_affine = tf2::transformToEigen(odom_trans);
     Eigen::Matrix4f odom_mat = odom_affine.matrix().cast<float>();
     if (previous_odom_mat_ != Eigen::Matrix4f::Identity()) {
-      sim_trans = sim_trans * previous_odom_mat_.inverse() * odom_mat;
+      sim_trans = sim_trans * previous_odom_mat_.inverse() * odom_mat;  // If we had applied odometry before, this time we apply the delta since the last time.
     }
-    previous_odom_mat_ = odom_mat;
+    std::cout << "MATTEO: " << odom_mat << std::endl;
+
+    previous_odom_mat_ = odom_mat;  // The first time we get odometry, we simply apply the absolute value.
   }
 
   pcl::PointCloud<pcl::PointXYZI>::Ptr output_cloud(new pcl::PointCloud<pcl::PointXYZI>);
@@ -357,7 +383,20 @@ void ScanMatcherComponent::receiveCloud(
 
   publishMapAndPose(cloud_ptr, final_transformation, stamp);
 
-  if (!debug_flag_) {return;}
+  // MATTEO: Save estimated poses to file.
+  nlohmann::json j;
+  j["pose"] = {final_transformation(0,0), final_transformation(0,1), final_transformation(0,2), final_transformation(0,3),
+                final_transformation(1,0), final_transformation(1,1), final_transformation(1,2), final_transformation(1,3),
+                final_transformation(2,0), final_transformation(2,1), final_transformation(2,2), final_transformation(2,3),
+                final_transformation(3,0), final_transformation(3,1), final_transformation(3,2), final_transformation(3,3)};
+  json_object_.push_back(j);
+  std::ofstream matteos_out_file;
+  matteos_out_file.open("/home/lab0/ws_lab0/data/lidar_slam/2024_04_24/output/estimated_lidar_poses.json"); // We save it every time.
+  matteos_out_file << std::setw(4) << json_object_ << std::endl; 
+  matteos_out_file.close();
+
+
+  // if (!debug_flag_) {return;}  # MATTEO: DEBUG IS ALWAYS ON
 
   tf2::Quaternion quat_tf;
   double roll, pitch, yaw;
@@ -384,6 +423,7 @@ void ScanMatcherComponent::receiveCloud(
   std::cout << "num_submaps:" << num_submaps << std::endl;
   std::cout << "moving distance:" << latest_distance_ << std::endl;
   std::cout << "---------------------------------------------------------" << std::endl;
+
 }
 
 void ScanMatcherComponent::publishMapAndPose(
