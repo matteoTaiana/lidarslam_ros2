@@ -69,15 +69,28 @@ target_compile_definitions(scanmatcher_component PRIVATE "GS_SM_BUILDING_DLL")
 
 ament_target_dependencies(scanmatcher_component ${dependencies})
 
+
 add_executable(scanmatcher_node
 src/scanmatcher_node.cpp
 )
 
+add_executable(matteo_test_align
+src/matteo_test_align.cpp
+)
+
+ament_target_dependencies(matteo_test_align ${dependencies})
+
 target_link_libraries(scanmatcher_node
+scanmatcher_component ${PCL_LIBRARIES})
+
+target_link_libraries(matteo_test_align 
 scanmatcher_component ${PCL_LIBRARIES})
 
 ament_target_dependencies(scanmatcher_node
   rclcpp)
+
+ament_target_dependencies(matteo_test_align
+rclcpp)
 
 include_directories(
     include
@@ -112,6 +125,11 @@ install(TARGETS
 
 install(TARGETS 
   scanmatcher_node
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(TARGETS 
+  matteo_test_align
   DESTINATION lib/${PROJECT_NAME}
 )
 

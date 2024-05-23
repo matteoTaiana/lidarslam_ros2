@@ -16,6 +16,8 @@ ScanMatcherComponent::ScanMatcherComponent(const rclcpp::NodeOptions & options)
   listener_(tfbuffer_),
   broadcaster_(this)
 {
+  pcl::console::setVerbosityLevel(pcl::console::L_VERBOSE);
+
   RCLCPP_INFO(get_logger(), "initialization start");
   double ndt_resolution;
   int ndt_num_threads;
@@ -117,8 +119,8 @@ ScanMatcherComponent::ScanMatcherComponent(const rclcpp::NodeOptions & options)
     registration_ = ndt;
 
   } else if (registration_method_ == "GICP") {
-	  boost::shared_ptr<pclomp::GeneralizedIterativeClosestPoint<pcl::PointXYZI, pcl::PointXYZI>>
-      gicp(new pclomp::GeneralizedIterativeClosestPoint<pcl::PointXYZI, pcl::PointXYZI>());
+	  boost::shared_ptr<pcl::GeneralizedIterativeClosestPoint<pcl::PointXYZI, pcl::PointXYZI>>
+      gicp(new pcl::GeneralizedIterativeClosestPoint<pcl::PointXYZI, pcl::PointXYZI>());
     gicp->setMaxCorrespondenceDistance(gicp_corr_dist_threshold);
     gicp->setTransformationEpsilon(1e-8);
     gicp->setMaximumIterations(100);
@@ -297,6 +299,14 @@ void ScanMatcherComponent::initializeMap(const pcl::PointCloud <pcl::PointXYZI>:
   pcl::transformPointCloud(*cloud_ptr, *transformed_cloud_ptr, sim_trans);
   registration_->setInputTarget(transformed_cloud_ptr);
 
+  // // WIP - SAVE MAP PCD.
+  // char output_file_name_map[200];
+  // sprintf(output_file_name_map, "/home/lab0/ws_lab0/data/lidar_slam/2024_04_24/pcds_to_be_aligned/%03d_map_pcd.pcd", n_received_pcds_ - 1);
+  // pcl::io::savePCDFile( output_file_name_map, *transformed_cloud_ptr, true ); // Binary format.
+
+
+
+
   // map
   sensor_msgs::msg::PointCloud2::SharedPtr map_msg_ptr(new sensor_msgs::msg::PointCloud2);
   pcl::toROSMsg(*transformed_cloud_ptr, *map_msg_ptr);
@@ -336,6 +346,12 @@ void ScanMatcherComponent::receiveCloud(
           voxel_grid.setInputCloud(targeted_cloud_ptr);
           voxel_grid.filter(*filtered_targeted_cloud_ptr);
           registration_->setInputTarget(filtered_targeted_cloud_ptr);
+
+          // // WIP - SAVE MAP PCD.
+          // char output_file_name_map[200];
+          // sprintf(output_file_name_map, "/home/lab0/ws_lab0/data/lidar_slam/2024_04_24/pcds_to_be_aligned/%03d_map_pcd.pcd", n_received_pcds_ - 1);
+          // pcl::io::savePCDFile( output_file_name_map, *filtered_targeted_cloud_ptr, true ); // Binary format.
+
         }
         is_map_updated_ = false;
       }
@@ -344,13 +360,24 @@ void ScanMatcherComponent::receiveCloud(
     }
   }
 
+  std::cout << "MATTEO: n_pcd_points_BEFORE_filering = " << cloud_ptr->size() << std::endl;
   pcl::PointCloud<pcl::PointXYZI>::Ptr filtered_cloud_ptr(new pcl::PointCloud<pcl::PointXYZI>());
   pcl::VoxelGrid<pcl::PointXYZI> voxel_grid;
-  // std::cout << "MATTEO: vg_size_for_input_ = " << vg_size_for_input_ << std::endl;
+  std::cout << "MATTEO: vg_size_for_input_ = " << vg_size_for_input_ << std::endl;
   voxel_grid.setLeafSize(vg_size_for_input_, vg_size_for_input_, vg_size_for_input_);
   voxel_grid.setInputCloud(cloud_ptr);
   voxel_grid.filter(*filtered_cloud_ptr);
   registration_->setInputSource(filtered_cloud_ptr);
+
+  // // WIP - SAVE INPUT PCD.
+  // char output_file_name[200];
+  // sprintf(output_file_name, "/home/lab0/ws_lab0/data/lidar_slam/2024_04_24/pcds_to_be_aligned/%03d_input_pcd.pcd", n_received_pcds_ - 1);
+  // pcl::io::savePCDFile( output_file_name, *filtered_cloud_ptr, true ); // Binary format.
+
+
+
+
+  std::cout << "MATTEO: n_pcd_points_AFTER_filering = " << filtered_cloud_ptr->size() << std::endl;
 
   Eigen::Matrix4f sim_trans = getTransformation(current_pose_stamped_.pose);
 
@@ -359,7 +386,6 @@ void ScanMatcherComponent::receiveCloud(
     try {
       odom_trans = tfbuffer_.lookupTransform(
         odom_frame_id_, robot_frame_id_, tf2_ros::fromMsg(stamp));  // MATTEO: I think we are looking for the closest odometry message to the time at which we received the PCD.
-        std::cout << "MATTEO: odometry received" << std::endl;
     } catch (tf2::TransformException & e) {
       RCLCPP_ERROR(this->get_logger(), "%s", e.what());
     }
@@ -368,7 +394,7 @@ void ScanMatcherComponent::receiveCloud(
     if (previous_odom_mat_ != Eigen::Matrix4f::Identity()) {
       sim_trans = sim_trans * previous_odom_mat_.inverse() * odom_mat;  // If we had applied odometry before, this time we apply the delta since the last time.
     }
-    std::cout << "MATTEO: " << odom_mat << std::endl;
+    std::cout << "MATTEO, ODOMETRY: " << std::endl << odom_mat << std::endl;
 
     previous_odom_mat_ = odom_mat;  // The first time we get odometry, we simply apply the absolute value.
   }
@@ -408,13 +434,20 @@ void ScanMatcherComponent::receiveCloud(
   std::cout << "trans: " << trans_ << std::endl;
   std::cout << "align time:" << time_align_end.seconds() - time_align_start.seconds() << "s" <<
     std::endl;
-  std::cout << "number of filtered cloud points: " << filtered_cloud_ptr->size() << std::endl;
+  std::cout << "number of point in input PCD after filtering: " << filtered_cloud_ptr->size() << std::endl;
+  std::cout << "Has converged: " << registration_->hasConverged() << std::endl;
+  std::cout << "Fitness score: " << registration_->getFitnessScore() << std::endl;
+  // std::cout << "Convergence criterion:" << *registration_->getConvergeCriteria() << endl;
+
+  std::cout << std::endl;
   std::cout << "initial transformation:" << std::endl;
   std::cout << sim_trans << std::endl;
-  std::cout << "has converged: " << registration_->hasConverged() << std::endl;
-  std::cout << "fitness score: " << registration_->getFitnessScore() << std::endl;
-  std::cout << "final transformation:" << std::endl;
+  // std::cout << "Transformation:" << std::endl;
+  // std::cout << registration_->getTransformation() << std::endl;
+    std::cout << "final transformation:" << std::endl;
   std::cout << final_transformation << std::endl;
+  
+  std::cout << std::endl;
   std::cout << "rpy" << std::endl;
   std::cout << "roll:" << roll * 180 / M_PI << "," <<
     "pitch:" << pitch * 180 / M_PI << "," <<
