@@ -59,29 +59,11 @@ extern "C" {
 #include <lidarslam_msgs/msg/map_array.hpp>
 #include "scanmatcher/lidar_undistortion.hpp"
 
-#include <pclomp/ndt_omp.h>
-#include <pclomp/ndt_omp_impl.hpp>
-#include <pclomp/voxel_grid_covariance_omp.h>
-#include <pclomp/voxel_grid_covariance_omp_impl.hpp>
-// #include <pclomp/gicp_omp.h>
-// #include <pclomp/gicp_omp_impl.hpp>
 
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
-// #include <pcl/visualization/cloud_viewer.h>
-// #include <pcl/registration/icp.h>
 #include <pcl/registration/gicp.h>
-// #include <pcl/segmentation/extract_clusters.h>
-// #include <pcl/filters/extract_indices.h>
-// #include <pcl/filters/voxel_grid.h>
-// #include <pcl/features/normal_3d.h>
-// #include <pcl/kdtree/kdtree.h>
-// #include <pcl/sample_consensus/method_types.h>
-// #include <pcl/sample_consensus/model_types.h>
-// #include <pcl/segmentation/sac_segmentation.h>
-// #include <pcl/segmentation/extract_clusters.h>
-// #include <pcl/filters/statistical_outlier_removal.h>
-// #include <pcl/features/normal_3d_omp.h>
+#include <pcl/registration/ndt.h>
 
 #include <mutex>
 #include <thread>

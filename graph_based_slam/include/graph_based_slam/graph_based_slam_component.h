@@ -65,13 +65,6 @@ extern "C" {
 #include <pcl/registration/gicp.h>
 #include <pcl/io/pcd_io.h>
 
-#include <pclomp/ndt_omp.h>
-#include <pclomp/ndt_omp_impl.hpp>
-#include <pclomp/voxel_grid_covariance_omp.h>
-#include <pclomp/voxel_grid_covariance_omp_impl.hpp>
-#include <pclomp/gicp_omp.h>
-#include <pclomp/gicp_omp_impl.hpp>
-
 #include "g2o/core/sparse_optimizer.h"
 #include "g2o/core/optimization_algorithm_levenberg.h"
 #include "g2o/core/block_solver.h"

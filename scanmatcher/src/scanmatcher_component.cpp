@@ -108,13 +108,13 @@ ScanMatcherComponent::ScanMatcherComponent(const rclcpp::NodeOptions & options)
 
   if (registration_method_ == "NDT") {
 
-    pclomp::NormalDistributionsTransform<pcl::PointXYZI, pcl::PointXYZI>::Ptr
-      ndt(new pclomp::NormalDistributionsTransform<pcl::PointXYZI, pcl::PointXYZI>());
+    boost::shared_ptr<pcl::NormalDistributionsTransform<pcl::PointXYZI, pcl::PointXYZI>>
+      ndt(new pcl::NormalDistributionsTransform<pcl::PointXYZI, pcl::PointXYZI>());
     ndt->setResolution(ndt_resolution);
     ndt->setTransformationEpsilon(0.001);  // MATTEO: Alignment terminates when difference between two consecutive steps drops below this value. Default: 0.01. [meters for translation, radians for rotation.]
     // ndt_omp
-    ndt->setNeighborhoodSearchMethod(pclomp::DIRECT7);
-    if (ndt_num_threads > 0) {ndt->setNumThreads(ndt_num_threads);}
+    //ndt->setNeighborhoodSearchMethod(pcl::DIRECT7);  Might not be available in plain PCL.
+    //if (ndt_num_threads > 0) {ndt->setNumThreads(ndt_num_threads);}  Not available in plain PCL.
 
     registration_ = ndt;
 
@@ -341,10 +341,11 @@ void ScanMatcherComponent::receiveCloud(
         } else {
           pcl::PointCloud<pcl::PointXYZI>::Ptr filtered_targeted_cloud_ptr(
             new pcl::PointCloud<pcl::PointXYZI>());
-          pcl::VoxelGrid<pcl::PointXYZI> voxel_grid;
-          voxel_grid.setLeafSize(vg_size_for_input_, vg_size_for_input_, vg_size_for_input_);
-          voxel_grid.setInputCloud(targeted_cloud_ptr);
-          voxel_grid.filter(*filtered_targeted_cloud_ptr);
+          // pcl::VoxelGrid<pcl::PointXYZI> voxel_grid;
+          // voxel_grid.setLeafSize(vg_size_for_input_, vg_size_for_input_, vg_size_for_input_);
+          // voxel_grid.setInputCloud(targeted_cloud_ptr);
+          // voxel_grid.filter(*filtered_targeted_cloud_ptr);
+          copyPointCloud(*targeted_cloud_ptr, *filtered_targeted_cloud_ptr);
           registration_->setInputTarget(filtered_targeted_cloud_ptr);
 
           // // WIP - SAVE MAP PCD.

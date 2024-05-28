@@ -1,22 +1,5 @@
+// This file can be used to compare results between different GICP and NDT implementations (PCL VS OMPPCL).
 #include <rclcpp/rclcpp.hpp>
-
-// #include <tf2_ros/buffer.h>
-// #include <tf2_ros/transform_listener.h>
-// #include <tf2_ros/transform_broadcaster.h>
-// #include <tf2_sensor_msgs/tf2_sensor_msgs.hpp>
-// #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
-// #include <tf2_eigen/tf2_eigen.hpp>
-
-// #include <sensor_msgs/msg/point_cloud2.hpp>
-// #include <sensor_msgs/msg/imu.hpp>
-// #include <geometry_msgs/msg/point.hpp>
-// #include <geometry_msgs/msg/pose_stamped.hpp>
-// #include <geometry_msgs/msg/transform.hpp>
-// #include <geometry_msgs/msg/transform_stamped.hpp>
-// #include <nav_msgs/msg/path.hpp>
-
-// #include <lidarslam_msgs/msg/map_array.hpp>
-// #include "scanmatcher/lidar_undistortion.hpp"
 
 #include <pclomp/ndt_omp.h>
 #include <pclomp/ndt_omp_impl.hpp>
@@ -24,12 +7,6 @@
 #include <pclomp/voxel_grid_covariance_omp_impl.hpp>
 #include <pclomp/gicp_omp.h>
 #include <pclomp/gicp_omp_impl.hpp>
-
-// #include <mutex>
-// #include <thread>
-// #include <future>
-
-// #include <pcl_conversions/pcl_conversions.h>
 
 #include <nlohmann/json.hpp>
 #include <chrono>
