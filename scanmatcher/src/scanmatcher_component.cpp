@@ -360,7 +360,7 @@ void ScanMatcherComponent::receiveCloud(
     }
   }
 
-  std::cout << "MATTEO: n_pcd_points_BEFORE_filering = " << cloud_ptr->size() << std::endl;
+  std::cout << "MATTEO: n_pcd_points_BEFORE_filtering = " << cloud_ptr->size() << std::endl;
   pcl::PointCloud<pcl::PointXYZI>::Ptr filtered_cloud_ptr(new pcl::PointCloud<pcl::PointXYZI>());
   pcl::VoxelGrid<pcl::PointXYZI> voxel_grid;
   std::cout << "MATTEO: vg_size_for_input_ = " << vg_size_for_input_ << std::endl;
@@ -368,6 +368,7 @@ void ScanMatcherComponent::receiveCloud(
   voxel_grid.setInputCloud(cloud_ptr);
   voxel_grid.filter(*filtered_cloud_ptr);
   registration_->setInputSource(filtered_cloud_ptr);
+
 
   // // WIP - SAVE INPUT PCD.
   // char output_file_name[200];
@@ -377,7 +378,7 @@ void ScanMatcherComponent::receiveCloud(
 
 
 
-  std::cout << "MATTEO: n_pcd_points_AFTER_filering = " << filtered_cloud_ptr->size() << std::endl;
+  std::cout << "MATTEO: n_pcd_points_AFTER_filtering = " << filtered_cloud_ptr->size() << std::endl;
 
   Eigen::Matrix4f sim_trans = getTransformation(current_pose_stamped_.pose);
 
@@ -406,6 +407,15 @@ void ScanMatcherComponent::receiveCloud(
   rclcpp::Time time_align_end = system_clock.now();
 
   Eigen::Matrix4f final_transformation = registration_->getFinalTransformation();
+  
+  // // TODO EXPERIMENTAL!!!
+  // // Matteo: tweak the final transformation to account for the bias we see at the end of the container.
+  // float dx_per_frame = ( -0.01575477235019207 -  0.006759862415492535) / 526.0;
+  // float dy_per_frame = (-12.188017845153809   + 12.043776512145996   ) / 526.0;
+  // float dz_per_frame = ( -1.910225510597229   +  1.891991138458252   ) / 526.0;
+  // final_transformation(0, 3) += dx_per_frame;
+  // final_transformation(1, 3) += dy_per_frame;
+  // final_transformation(2, 3) += dz_per_frame;
 
   publishMapAndPose(cloud_ptr, final_transformation, stamp);
 

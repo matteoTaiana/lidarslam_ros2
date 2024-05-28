@@ -1,9 +1,3 @@
-# V1 - Config with up to 600 filtered points. 
-# V2 - Config with up to 750 filtered points.
-# V3 - Config with up to 3500 filtered points.
-# V3 - Config with up to 3800 filtered points.
-# V4 - Config with up to 4000 filtered points.
-
 # FRONT END.
 scan_matcher:
   ros__parameters:
@@ -13,10 +7,10 @@ scan_matcher:
     ndt_resolution: 0.7  # Size of a voxel for NDT. 0.7 works, 0.4 does not. 0.8 works better on the beginning, worse on the end.
     ndt_num_threads: 0  # As many as you can.
     
-    gicp_corr_dist_threshold: 0.1  # setMaxCorrespondenceDistance(here). Original for outdoors: 5.0. Does this affect NDT?
+    gicp_corr_dist_threshold: 0.05  # setMaxCorrespondenceDistance(here). Original for outdoors: 5.0. Does this affect NDT?
     trans_for_mapupdate: 0.2  # IMPORTANT - Original for outdoors 1.5. 0.7, 0.8 for NDT. I think the map is updated only if we move by this much.
-    vg_size_for_input: 0.03  # Original for outdoors 0.5. Voxel dimension for input PCD.
-    vg_size_for_map: 0.03   # Original for outdoors 0.1. Voxel dimension for map.
+    vg_size_for_input: 0.02  # Original for outdoors 0.5. Voxel dimension for input PCD.
+    vg_size_for_map: 0.02   # Original for outdoors 0.1. Voxel dimension for map.
     
     use_min_max_filter: true  # I think this enables the filter that rejects points too close or too far from the lidar.
     scan_min_range: 0.2
