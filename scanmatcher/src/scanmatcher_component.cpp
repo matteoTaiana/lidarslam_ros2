@@ -428,7 +428,7 @@ void ScanMatcherComponent::receiveCloud(
                 final_transformation(3,0), final_transformation(3,1), final_transformation(3,2), final_transformation(3,3)};
   json_object_.push_back(j);
   std::ofstream matteos_out_file;
-  matteos_out_file.open("/home/lab0/ws_lab0/data/lidar_slam/2024_04_24/output/estimated_lidar_poses.json"); // We save it every time.
+  matteos_out_file.open("/home/lab0/ws_lab0/data/lidar_slam/estimated_lidar_poses.json"); // We save it every time.
   matteos_out_file << std::setw(4) << json_object_ << std::endl; 
   matteos_out_file.close();
 
