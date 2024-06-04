@@ -32,7 +32,6 @@ find_package(tf2_geometry_msgs REQUIRED)
 find_package(tf2_eigen REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(lidarslam_msgs REQUIRED)
-find_package(ndt_omp_ros2 REQUIRED)
 find_package(PCL REQUIRED)
 find_package(OpenMP)
 
@@ -48,7 +47,6 @@ set(dependencies
   sensor_msgs
   nav_msgs
   lidarslam_msgs
-  ndt_omp_ros2
 )
 
 if (OPENMP_FOUND)
