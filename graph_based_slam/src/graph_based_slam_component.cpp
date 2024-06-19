@@ -206,7 +206,7 @@ void GraphBasedSlamComponent::searchLoop()
 
   if (is_candidate) {
     pcl::PointCloud<pcl::PointXYZI>::Ptr submap_clouds_ptr(new pcl::PointCloud<pcl::PointXYZI>);
-    for (int j = 0; j <= 2 * search_submap_num_; ++j) {
+    for (int j = 0; j < 2 * search_submap_num_; ++j) {
       if (id_min + j - search_submap_num_ < 0) {continue;}
       auto near_submap = map_array_msg.submaps[id_min + j - search_submap_num_];
       pcl::PointCloud<pcl::PointXYZI>::Ptr submap_cloud_ptr(new pcl::PointCloud<pcl::PointXYZI>);
