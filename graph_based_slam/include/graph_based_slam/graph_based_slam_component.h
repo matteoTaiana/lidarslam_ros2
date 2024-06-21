@@ -90,7 +90,8 @@ public:
 
 private:
     std::mutex mtx_;
-
+    std::string output_path_part_;
+    
     rclcpp::Clock clock_;
     tf2_ros::Buffer tfbuffer_;
     tf2_ros::TransformListener listener_;

@@ -1,10 +1,75 @@
 #include "graph_based_slam/graph_based_slam_component.h"
 #include <chrono>
+#include <filesystem>
 
+namespace fs = std::filesystem;
 using namespace std::chrono_literals;
 
 namespace graphslam
 {
+
+std::string GetCurrentTime()
+{
+  auto now = std::chrono::system_clock::now();
+  auto itt = std::chrono::system_clock::to_time_t(now);
+  std::ostringstream ss;
+  ss << std::put_time(std::localtime(&itt), "%Y-%m-%d");
+  return ss.str();
+}
+
+int GetTrialNumber(std::filesystem::path dir)
+{
+  int next_trial = 0;
+  int last_trial = 0;
+  try
+  {
+    for (const auto& entry : std::filesystem::directory_iterator(dir))
+    {
+      if (std::filesystem::is_directory(entry.path()))
+      {
+        int current_trial = std::atoi(entry.path().filename().c_str());
+        if (current_trial > last_trial)
+        {
+          last_trial = current_trial;
+        }
+      }
+    }
+  }
+  catch (const std::exception& e)
+  {
+    std::cerr << "Could not convert the file name to integer: " << e.what() << std::endl;
+  }
+
+  // Get the folder creation time
+  auto full_path = dir / std::to_string(last_trial);
+
+  if (last_trial == 0)
+  {
+    next_trial = last_trial + 1;
+  }
+  else if (!std::filesystem::exists(full_path))
+  {
+    next_trial = last_trial;
+  }
+  else
+  {
+    // get creation time of the trial folder and compare it with the current time
+    auto creation_time = std::filesystem::last_write_time(full_path);
+    auto current_time = std::filesystem::file_time_type::clock::now();
+    auto duration = current_time - creation_time;
+    if (duration < 5s)
+    {
+      next_trial = last_trial;
+    }
+    else
+    {
+      next_trial = last_trial + 1;
+    }
+  }
+
+  return next_trial;
+}
+
 GraphBasedSlamComponent::GraphBasedSlamComponent(const rclcpp::NodeOptions & options)
 : Node("graph_based_slam", options),
   clock_(RCL_ROS_TIME),
@@ -38,10 +103,12 @@ GraphBasedSlamComponent::GraphBasedSlamComponent(const rclcpp::NodeOptions & opt
   get_parameter("search_submap_num", search_submap_num_);
   declare_parameter("num_adjacent_pose_cnstraints", 5);
   get_parameter("num_adjacent_pose_cnstraints", num_adjacent_pose_cnstraints_);
-  declare_parameter("use_save_map_in_loop", true);
+  declare_parameter("use_save_map_in_loop", false);
   get_parameter("use_save_map_in_loop", use_save_map_in_loop_);
   declare_parameter("debug_flag", false);
   get_parameter("debug_flag", debug_flag_);
+  declare_parameter("output_path_part", "PLACEHOLDER");
+  get_parameter("output_path_part", output_path_part_);
 
   std::cout << "registration_method:" << registration_method << std::endl;
   std::cout << "voxel_leaf_size[m]:" << voxel_leaf_size << std::endl;
@@ -263,7 +330,6 @@ void GraphBasedSlamComponent::doPoseAdjustment(
   lidarslam_msgs::msg::MapArray map_array_msg,
   bool do_save_map)
 {
-
   g2o::SparseOptimizer optimizer;
   optimizer.setVerbose(false);
   std::unique_ptr<g2o::BlockSolver_6_3::LinearSolverType> linear_solver =
@@ -314,10 +380,18 @@ void GraphBasedSlamComponent::doPoseAdjustment(
     optimizer.addEdge(edge_se3);
   }
 
+  // Compute output directory.
+  const char* home_env = std::getenv("HOME");
+  fs::path out_dir_ = fs::path(std::string(home_env)) / output_path_part_ / fs::path(GetCurrentTime());
+  out_dir_ /= std::to_string(GetTrialNumber(out_dir_) - 1);
+  std::cout << "Output directory set to: " << out_dir_ << std::endl;
+
   optimizer.initializeOptimization();
   optimizer.optimize(10);
-  optimizer.save("pose_graph.g2o");
-
+  if (do_save_map) 
+  {
+    optimizer.save((out_dir_ / "pose_graph.g2o").string().c_str());
+  }
   /* modified_map publish */
   std::cout << "modified_map publish" << std::endl;
   lidarslam_msgs::msg::MapArray modified_map_array_msg;
@@ -366,7 +440,7 @@ void GraphBasedSlamComponent::doPoseAdjustment(
   pcl::toROSMsg(*map_ptr, *map_msg_ptr);
   map_msg_ptr->header.frame_id = "map";
   modified_map_pub_->publish(*map_msg_ptr);
-  if (do_save_map) {pcl::io::savePCDFileASCII("map.pcd", *map_ptr);} // too heavy
+  if (do_save_map) {pcl::io::savePCDFileASCII((out_dir_ / "map.pcd").string(), *map_ptr);} // too heavy
 
 }
 
